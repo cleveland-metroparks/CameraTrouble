@@ -98,14 +98,16 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
                                                   "Other wildlife camera projects \n(e.g., West Creek trails, S. Chagrin climate, Timberlane plots)" = 
                                                       "other")),
                           conditionalPanel(condition = "input.project == 'focus'",
-                                           uiOutput("ui_focus_camera_name")),
+                                           uiOutput("ui_focus_camera_choices")),
                           conditionalPanel(condition = "input.project == 'other'",
-                                           uiOutput("ui_other_camera_name")),
+                                           uiOutput("ui_other_camera_choices")),
                           textAreaInput("other_camera",
                                         "If your camera was not in the list, enter it here with any notes."),
                           textAreaInput("action_items",
                                         "Action items needed (if any)"),
-                          numericInput("image_count", labelMandatory("Number of pictures on SD Card")),
+                          numericInput("image_count", labelMandatory("Number of pictures on SD Card (click box and type number)"),
+                                       value = NULL,
+                                       min = 0),
                           "Did you observe any NEW significant human activity at or near this camera that may be related to extra park use during the COVID-19 period? (e.g., much higher human activity, vandalism, decorations or constructions, high amounts of trash)",
                           selectInput("covid_related_impact",labelMandatory("COVID-related impact?"),
                                       choices = c("Choose one option" = "",
@@ -114,8 +116,8 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
                           conditionalPanel(condition = "input.covid_related_impact == 'Yes'",
                                            textAreaInput("covid_human_impacts","COVID-related human impacts?")),
                           textAreaInput("comments", "Comments"),
-                          numericInput("battery_status", labelMandatory("Battery status  (from camera display)"),
-                                      min = 0, max = 3),
+                          numericInput("battery_status", labelMandatory("Battery status  (from camera display; 0-3)"),
+                                      value = NULL, min = 0, max = 3),
                           selectInput("batteries_changed","Batteries changed?",
                                       choices = c("Choose one option" = "",
                                                   "Yes",
@@ -152,40 +154,35 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
 
 # Define server logic required to draw a histogram
 server <- function(input, output) {
-    # Need reactive for
-    #  focus_camera_choices
-    #  other_camera_choices
-    focus_table_id = Id(schema = Schema, 
-                  table = db_table_focus)
-    other_table_id = Id(schema = Schema, 
-                        table = db_table_other)
-    
     sqlOutputFocusCameras = reactive({
-        
-        sqlInputFocusCameras = paste("select distinct camera_id_llnnnn from focus_table_id", sep="")
-        
+        sqlInputFocusCameras = paste("select distinct camera_id_llnnnn from ", 
+                                     Schema, ".", db_table_focus, 
+                                     " order by camera_id_llnnnn;", sep="")
         dbGetQuery(con, sqlInputFocusCameras)
     })
     
     sqlOutputOtherCameras <- reactive({
-        
-        sqlInputOtherCameras<- paste("select distinct camera_id from other_table_id", sep="")
-        
+        sqlInputOtherCameras<- paste("select distinct camera_id from ", 
+                                     Schema, ".", db_table_other, 
+                                     " order by camera_id;", sep="")
         dbGetQuery(con, sqlInputOtherCameras)
     })
-    
     
     output$ui_focus_camera_choices <- renderUI({
         selectInput('focus_camera_choices',
                     label ='Focus on Wildlife camera name',
-                    choices=sqlOutputFocusCameras(),
+                    choices=append(sqlOutputFocusCameras(), 
+                                   c("Choose one camera" = ""), 
+                                   after = 0),
                     selected = NULL, multiple = FALSE, width="450px")
     })
     
     output$ui_other_camera_choices <- renderUI({
         selectInput('other_camera_choices',
                     label ='Other project camera names',
-                    choices=sqlOutputOtherCameras(),
+                    choices=append(sqlOutputOtherCameras(),
+                                   c("Choose one camera" = ""),
+                                   after = 0),
                     selected = NULL, multiple = FALSE, width="450px")
     })
 
