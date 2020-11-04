@@ -30,8 +30,11 @@ db_table_other = "other_project_cameras"
 db_table_out = "rshiny_test_form_3"
 # un-comment this and sections for saving to file locally for /testing/debugging
 responsesDir <- file.path("responses")
-
-# formData reactive in server block must be changed whenever form is modified
+# These need to be changed whenever fields are added/subtracted from ui
+fieldsSimple = c("names", "email", "clock_updated", "project", "focus_camera_choices",
+                 "other_camera_choices", "other_camera", "action_items",
+                 "image_count", "covid_human_impacts", "comments", "battery_status", 
+                 "batteries_changed")
 
 source("loginparams_shiny.R")
 
@@ -77,7 +80,7 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
                  tabPanel("Camera check data",
                           shinyjs::useShinyjs(),
                           shinyjs::inlineCSS(appCSS),
-                          id = "form",
+                          div(id = "form",
                           h4("This is where you can enter data about the camera you have checked."),
                           "Mandatory information marked with red star",
                           labelMandatory(" "),
@@ -140,7 +143,7 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
                                                 tags$b("Error: "),
                                                 span(id = "error_msg"),
                                                 br(), br()
-                                            ))),
+                                            )))),
                         shinyjs::hidden(div(
                             id = "thankyou_msg",
                             h3(
@@ -156,8 +159,21 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
                  )
 )
 
-# Define server logic required to draw a histogram
 server <- function(input, output) {
+    observe({
+        mandatoryFilled <-
+            vapply(fieldsMandatory,
+                   function(x) {
+                       class(input[[x]]) == "Date" ||
+                           (!is.null(input[[x]]) &&  input[[x]] != "")
+                   },
+                   logical(1))
+        mandatoryFilled <- all(mandatoryFilled)
+        
+        shinyjs::toggleState(id = "submit", 
+                             condition = mandatoryFilled)
+    })
+    
     sqlOutputFocusCameras = reactive({
         sqlInputFocusCameras = paste("select distinct camera_id_llnnnn from ", 
                                      Schema, ".", db_table_focus, 
@@ -198,7 +214,57 @@ server <- function(input, output) {
         }
     })
     
-    humanTime <- function() format(Sys.time(), "%Y-%m-%d %H:%M:%OS")
+    entry_dt = Sys.time()
+    humanTime <- function(x) format(x, "%Y%m%d-%H%M%OS")
+    
+    recordID = reactive({
+        sprintf(
+            # Comment out one of these depending on if you are saving a file locally or not
+            # "%s_%s_%s", # If not saving file locally
+            "%s_%s_%s.csv", # or "%s_%s_%s_%s.csv" if saving locally
+            input$project,
+            coalesce(na_if(input$focus_camera_choices, ""),
+                     na_if(input$other_camera_choices, "")),
+            humanTime(entry_dt)
+            # use line below if you worry about same username/same second 
+            #  collisions or want a nice unique key. Also change format of sprintf above
+            # digest::digest(data)
+        )
+    })
+ 
+    formData <- reactive({
+        data <- sapply(fieldsSimple, function(x) input[[x]])
+        data <- c(record_id = recordID(),
+                  card_retrival_date = as.character(input$date),
+                  entry_datetime = as.character(entry_dt),
+                  data)
+        data <- t(data)
+        data
+    })
+
+# Alternate approach    
+    # formData = reactive({
+    #     data = c(record_id = recordID(),
+    #              entry_datetime = Sys.time(),
+    #              names = input$names,
+    #              email = input$email,
+    #              card_retrival_date = input$date,
+    #              clock_updated = input$clock_updated,
+    #              project = input$project,
+    #              focus_camera_choices = input$focus_camera_choices,
+    #              other_camera_choices = input$other_camera_choices,
+    #              other_camera = input$other_camera,
+    #              action_items = input$action_items,
+    #              image_count = input$image_count,
+    #              covid_related_impact = input$covid_related_impact,
+    #           ...
+    #     )
+    #     data = t(data)
+    #     data
+    # })
+    
+    table_id = Id(schema = Schema, 
+                  table = db_table_out)
     
     saveData <- function(data) {
         # Keeping this for debugging. Also change format of recordID above
