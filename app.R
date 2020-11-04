@@ -72,16 +72,16 @@ appCSS <-
      #error { color: red; }"
 
 # Define UI for application that draws a histogram
-ui <- navbarPage("Cleveland Metroparks Wildlife Cameras", 
+ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
                  id = "nav",
                  tabPanel("Camera check data",
+                          shinyjs::useShinyjs(),
+                          shinyjs::inlineCSS(appCSS),
                           id = "form",
-                          "This is where you can enter data on the camera you have checked.",
-                          br(),
-                          
+                          h4("This is where you can enter data about the camera you have checked."),
                           "Mandatory information marked with red star",
                           labelMandatory(" "),
-                          " must be entered before you can submit.", br(),
+                          " must be entered before you can submit.", br(), br(),
                           
                           textInput("names", labelMandatory("Names"),
                                    placeholder = "Names of camera card volunteers"),
@@ -108,8 +108,11 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
                           numericInput("image_count", labelMandatory("Number of pictures on SD Card (click box and type number)"),
                                        value = NULL,
                                        min = 0),
-                          "Did you observe any NEW significant human activity at or near this camera that may be related to extra park use during the COVID-19 period? (e.g., much higher human activity, vandalism, decorations or constructions, high amounts of trash)",
-                          selectInput("covid_related_impact",labelMandatory("COVID-related impact?"),
+                          labelMandatory(tags$strong("COVID-related impact?: ")),"Did you observe any NEW significant human activity at or near this 
+                          camera that may be related to extra park use during the COVID-19 
+                          period? (e.g., much higher human activity, vandalism, decorations 
+                          or constructions, high amounts of trash)", br(),
+                          selectInput("covid_related_impact", "",
                                       choices = c("Choose one option" = "",
                                                   "Yes",
                                                   "No")),
@@ -122,34 +125,35 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
                                       choices = c("Choose one option" = "",
                                                   "Yes",
                                                   "No")),
-                          dateInput("battery_change_date", "Batteries changed date"),
+                          conditionalPanel(condition = "input.batteries_changed == 'Yes'",
+                                           uiOutput('up_date')),
 # May want to include battery readings here
 
                         "Mandatory information marked with red star",
                         labelMandatory(" "),
-                        " must be entered before you can submit.", br(),
+                        " must be entered before you can submit.", br(), br(),
+                        actionButton("submit", "Submit", class = "btn-primary"), br(), br(),
+                        shinyjs::hidden(span(id = "submit_msg", "Submitting..."),
+                                        div(id = "error",
+                                            div(
+                                                br(),
+                                                tags$b("Error: "),
+                                                span(id = "error_msg"),
+                                                br(), br()
+                                            ))),
+                        shinyjs::hidden(div(
+                            id = "thankyou_msg",
+                            h3(
+                                "Thanks, your response was submitted successfully! You may be contacted for further information."
+                            ),
+                            actionLink("submit_another", "Submit another response")
+                        ))
 
                  ),
                  tabPanel("Camera card upload",
                           id = "upload",
                           "Here you can upload a compressed file containing images from one camera card."
-                 ),
-                actionButton("submit", "Submit", class = "btn-primary"), br(),
-                shinyjs::hidden(
-                    span(id = "submit_msg", "Submitting..."),
-                    div(id = "error",
-                        div(br(), 
-                            tags$b("Error: "), 
-                            span(id = "error_msg"), 
-                            br()))
-                ),
-                shinyjs::hidden(
-                    div(
-                        id = "thankyou_msg",
-                        h3("Thanks, your response was submitted successfully! You may be contacted for further information."),
-                        actionLink("submit_another", "Submit another response")
-                    )
-                )
+                 )
 )
 
 # Define server logic required to draw a histogram
@@ -186,6 +190,14 @@ server <- function(input, output) {
                     selected = NULL, multiple = FALSE, width="450px")
     })
 
+    output$up_date = renderUI({
+        if(input$batteries_changed == 'Yes') {
+            dateInput("battery_change_date",
+                  "Batteries changed date",
+                  value = input$date)
+        }
+    })
+    
     humanTime <- function() format(Sys.time(), "%Y-%m-%d %H:%M:%OS")
     
     saveData <- function(data) {
