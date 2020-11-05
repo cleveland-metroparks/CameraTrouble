@@ -32,7 +32,7 @@ db_table_out = "rshiny_test_form_3"
 responsesDir <- file.path("responses")
 # These need to be changed whenever fields are added/subtracted from ui
 fieldsSimple = c("names", "email", "clock_updated", "project", "focus_camera_choices",
-                 "other_camera_choices", "other_camera", "action_items",
+                 "other_camera_choices", "other_camera_note", "action_items",
                  "image_count", "covid_human_impacts", "comments", "battery_status", 
                  "batteries_changed")
 
@@ -93,7 +93,7 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
                           dateInput("date", labelMandatory("Date")),
                           selectInput("clock_updated", "Clock moved back/forward 1 hour?",
                                       choices = c("Choose one option" = "",
-                                                  "Yes", "No")),
+                                                  "No", "Yes")),
                           selectInput("project", labelMandatory("Camera project"),
                                       choices = c("Choose one option" = "",
                                                   "Focus on Wildlife wildlife camera project" = 
@@ -104,8 +104,13 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
                                            uiOutput("ui_focus_camera_choices")),
                           conditionalPanel(condition = "input.project == 'other'",
                                            uiOutput("ui_other_camera_choices")),
-                          textAreaInput("other_camera",
-                                        "If your camera was not in the list, enter it here with any notes."),
+                          conditionalPanel(condition = 'input.project != "" &&
+                                           (input.focus_camera_choices == "" ||
+                                           input.focus_camera_choices == "")',
+                                           textAreaInput("other_camera_note",
+                                                         "If your camera was not in the list, 
+                                                         enter it here (add any notes in 
+                                                         action_items).")),
                           textAreaInput("action_items",
                                         "Action items needed (if any)"),
                           numericInput("image_count", labelMandatory("Number of pictures on SD Card (click box and type number)"),
@@ -117,8 +122,8 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
                           or constructions, high amounts of trash)", br(),
                           selectInput("covid_related_impact", "",
                                       choices = c("Choose one option" = "",
-                                                  "Yes",
-                                                  "No")),
+                                                  "No",
+                                                  "Yes")),
                           conditionalPanel(condition = "input.covid_related_impact == 'Yes'",
                                            textAreaInput("covid_human_impacts","COVID-related human impacts?")),
                           textAreaInput("comments", "Comments"),
@@ -126,8 +131,8 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
                                       value = NULL, min = 0, max = 3),
                           selectInput("batteries_changed","Batteries changed?",
                                       choices = c("Choose one option" = "",
-                                                  "Yes",
-                                                  "No")),
+                                                  "No",
+                                                  "Yes")),
                           conditionalPanel(condition = "input.batteries_changed == 'Yes'",
                                            uiOutput('up_date')),
 # May want to include battery readings here
@@ -224,7 +229,8 @@ server <- function(input, output) {
             "%s_%s_%s.csv", # or "%s_%s_%s_%s.csv" if saving locally
             input$project,
             coalesce(na_if(input$focus_camera_choices, ""),
-                     na_if(input$other_camera_choices, "")),
+                     na_if(input$other_camera_choices, ""),
+                     na_if(input$other_camera_note, "")),
             humanTime(entry_dt)
             # use line below if you worry about same username/same second 
             #  collisions or want a nice unique key. Also change format of sprintf above
@@ -253,7 +259,7 @@ server <- function(input, output) {
     #              project = input$project,
     #              focus_camera_choices = input$focus_camera_choices,
     #              other_camera_choices = input$other_camera_choices,
-    #              other_camera = input$other_camera,
+    #              other_camera_note = input$other_camera_note,
     #              action_items = input$action_items,
     #              image_count = input$image_count,
     #              covid_related_impact = input$covid_related_impact,
