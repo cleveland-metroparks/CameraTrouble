@@ -104,14 +104,17 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
                                            uiOutput("ui_focus_camera_choices")),
                           conditionalPanel(condition = "input.project == 'other'",
                                            uiOutput("ui_other_camera_choices")),
+                          conditionalPanel(condition = 'input.project != ""',
+                                           tags$span(style="color:red", 
+                                                     textOutput("camera_entered")), br()),
                           conditionalPanel(condition = 'input.project != "" &&
                                            (input.focus_camera_choices == "" ||
                                            input.focus_camera_choices == "")',
                                            textAreaInput("other_camera_note",
-                                                         "If your camera was not in the list, 
-                                                         enter it here (add any notes in 
-                                                         action_items).")),
-                          textAreaInput("action_items",
+                                                         labelMandatory("If your camera was not 
+                                                         in the list,enter it here (add any 
+                                                        notes in action_items)."))),
+                          textInput("action_items",
                                         "Action items needed (if any)"),
                           numericInput("image_count", labelMandatory("Number of pictures on SD Card (click box and type number)"),
                                        value = NULL,
@@ -165,6 +168,23 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
 )
 
 server <- function(input, output) {
+    cam_entered = FALSE
+    
+    observe({
+        if((is.null(input$focus_camera_choices) || input$focus_camera_choices == "") &&
+           (is.null(input$other_camera_choices) || input$other_camera_choices == "") &&
+           (is.null(input$other_camera_note) || input$other_camera_note == "")
+           ) {
+            cam_entered = FALSE
+            output$camera_entered = renderText("No camera id entered. Choose one 
+                                               from dropdown above or enter in 
+                                               space provided below.")
+        } else {
+            cam_entered = TRUE
+            output$camera_entered = renderText("")
+        }
+    })
+    
     observe({
         mandatoryFilled <-
             vapply(fieldsMandatory,
@@ -195,7 +215,7 @@ server <- function(input, output) {
     
     output$ui_focus_camera_choices <- renderUI({
         selectInput('focus_camera_choices',
-                    label ='Focus on Wildlife camera name',
+                    label =labelMandatory('Focus on Wildlife camera name'),
                     choices=append(sqlOutputFocusCameras(), 
                                    c("Choose one camera" = ""), 
                                    after = 0),
@@ -204,7 +224,7 @@ server <- function(input, output) {
     
     output$ui_other_camera_choices <- renderUI({
         selectInput('other_camera_choices',
-                    label ='Other project camera names',
+                    label =labelMandatory('Other project camera names'),
                     choices=append(sqlOutputOtherCameras(),
                                    c("Choose one camera" = ""),
                                    after = 0),
