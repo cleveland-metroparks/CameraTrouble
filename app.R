@@ -161,25 +161,26 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
 
                  ),
                  tabPanel("Camera card upload",
-                          id = "upload",
-                          "Here you can upload a compressed file containing images from one camera card."
+                          id = "uploader",
+                          h4("Here you can upload a compressed file containing images from one camera card."),
+                          fileInput("file_upload", "Upload the 7zip file with images in it",
+                                    accept = c(".jpg", ".png")),
+                          tableOutput("files")
+                          
                  )
 )
 
 server <- function(input, output) {
-    cam_entered = FALSE
-    
+
     observe({
         if((is.null(input$focus_camera_choices) || input$focus_camera_choices == "") &&
            (is.null(input$other_camera_choices) || input$other_camera_choices == "") &&
            (is.null(input$other_camera_note) || input$other_camera_note == "")
            ) {
-            cam_entered = FALSE
             output$camera_entered = renderText("No camera name entered. Choose one 
                                                from dropdown above or enter in 
                                                space provided below.")
         } else {
-            cam_entered = TRUE
             output$camera_entered = renderText("")
         }
     })
@@ -311,7 +312,15 @@ server <- function(input, output) {
     observeEvent(input$submit_another, {
         shinyjs::show("form")
         shinyjs::hide("thankyou_msg")
-    }) 
+    })
+    
+    
+    file_uploaded = reactive({
+        req(input$file_upload)
+    })
+    # output$files <- renderTable(input$file_upload)
+    output$files <- renderTable(file_uploaded())
+    
 }
 
 # Run the application 
