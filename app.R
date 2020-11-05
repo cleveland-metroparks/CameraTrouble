@@ -29,7 +29,8 @@ db_table_focus = "camera_trap_pcap"
 db_table_other = "other_project_cameras"
 db_table_out = "rshiny_test_form_3"
 # un-comment this and sections for saving to file locally for /testing/debugging
-responsesDir <- file.path("responses")
+# responsesDir <- file.path("responses")
+
 # These need to be changed whenever fields are added/subtracted from ui
 fieldsSimple = c("names", "email", "clock_updated", "project", "focus_camera_choices",
                  "other_camera_choices", "other_camera_note", "action_items",
@@ -52,11 +53,9 @@ onStop(function() {
     rm(User, Password, pos = ".GlobalEnv")
 })
 
-epochTime <- function() {
-    as.integer(Sys.time())
-}
-
 # Set up marking for mandatory fields
+# Camera name is also mandatory, but can be in 3 fields, and has to be handled separately
+#  in the mandatoryFilled function in server
 fieldsMandatory = c("names", 
                     "date", 
                     "project", 
@@ -110,11 +109,11 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
                           conditionalPanel(condition = 'input.project != "" &&
                                            (input.focus_camera_choices == "" ||
                                            input.focus_camera_choices == "")',
-                                           textAreaInput("other_camera_note",
+                                           textInput("other_camera_note",
                                                          labelMandatory("If your camera was not 
                                                          in the list,enter it here (add any 
                                                         notes in action_items)."))),
-                          textInput("action_items",
+                          textAreaInput("action_items",
                                         "Action items needed (if any)"),
                           numericInput("image_count", labelMandatory("Number of pictures on SD Card (click box and type number)"),
                                        value = NULL,
@@ -251,14 +250,14 @@ server <- function(input, output) {
     recordID = reactive({
         sprintf(
             # Comment out one of these depending on if you are saving a file locally or not
-            # "%s_%s_%s", # If not saving file locally
-            "%s_%s_%s.csv", # or "%s_%s_%s_%s.csv" if saving locally
+            "%s_%s_%s", # If not saving file locally
+            # "%s_%s_%s.csv", # or "%s_%s_%s_%s.csv" if saving locally
             input$project,
             coalesce(na_if(input$focus_camera_choices, ""),
                      na_if(input$other_camera_choices, ""),
                      na_if(input$other_camera_note, "")),
             humanTime(entry_dt)
-            # use line below if you worry about same username/same second 
+            # use line below if you worry about same camera name/same second 
             #  collisions or want a nice unique key. Also change format of sprintf above
             # digest::digest(data)
         )
@@ -269,40 +268,20 @@ server <- function(input, output) {
         data <- c(record_id = recordID(),
                   card_retrival_date = as.character(input$date),
                   entry_datetime = as.character(entry_dt),
-                  data)
+                  data,
+                  battery_change_date = as.character(input$battery_change_date))
         data <- t(data)
         data
     })
 
-# Alternate approach    
-    # formData = reactive({
-    #     data = c(record_id = recordID(),
-    #              entry_datetime = Sys.time(),
-    #              names = input$names,
-    #              email = input$email,
-    #              card_retrival_date = input$date,
-    #              clock_updated = input$clock_updated,
-    #              project = input$project,
-    #              focus_camera_choices = input$focus_camera_choices,
-    #              other_camera_choices = input$other_camera_choices,
-    #              other_camera_note = input$other_camera_note,
-    #              action_items = input$action_items,
-    #              image_count = input$image_count,
-    #              covid_related_impact = input$covid_related_impact,
-    #           ...
-    #     )
-    #     data = t(data)
-    #     data
-    # })
-    
     table_id = Id(schema = Schema, 
                   table = db_table_out)
     
     saveData <- function(data) {
         # Keeping this for debugging. Also change format of recordID above
-        write.csv(x = data, file = file.path(responsesDir, recordID()),
-                  row.names = FALSE, quote = TRUE)
-        # dbAppendTable(con, table_id, value = data.frame(data))
+        # write.csv(x = data, file = file.path(responsesDir, recordID()),
+        #           row.names = FALSE, quote = TRUE)
+        dbAppendTable(con, table_id, value = data.frame(data))
     }
 
     # action to take when submit button is pressed
