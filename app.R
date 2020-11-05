@@ -176,7 +176,7 @@ server <- function(input, output) {
            (is.null(input$other_camera_note) || input$other_camera_note == "")
            ) {
             cam_entered = FALSE
-            output$camera_entered = renderText("No camera id entered. Choose one 
+            output$camera_entered = renderText("No camera name entered. Choose one 
                                                from dropdown above or enter in 
                                                space provided below.")
         } else {
@@ -194,9 +194,15 @@ server <- function(input, output) {
                    },
                    logical(1))
         mandatoryFilled <- all(mandatoryFilled)
+        camera_id_filled = (!is.null(input$focus_camera_choices) &&
+                                         input$focus_camera_choices != "") ||
+                           (!is.null(input$other_camera_choices) &&
+                                         input$other_camera_choices != "") ||
+                           (!is.null(input$other_camera_note) &&
+                                         input$other_camera_note != "")
         
         shinyjs::toggleState(id = "submit", 
-                             condition = mandatoryFilled)
+                             condition = mandatoryFilled && camera_id_filled)
     })
     
     sqlOutputFocusCameras = reactive({
