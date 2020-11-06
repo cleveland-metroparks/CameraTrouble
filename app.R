@@ -262,19 +262,6 @@ server <- function(input, output) {
                 "Upload button will appear here once project and camera are defined"
         }
     })
-    # output$ui_upload_file = renderUI({
-    #     conditionalPanel(condition = 
-    #                          (!is.null(input$focus_camera_choices2) &&
-    #                               input$focus_camera_choices2 != "") ||
-    #                          (!is.null(input$other_camera_choices2) &&
-    #                               input$other_camera_choices2 != "") ||
-    #                          (!is.null(input$other_camera_note2) &&
-    #                               input$other_camera_note2 != ""),
-    #                      fileInput("file_upload",
-    #                                "Upload the 7zip file with images in it",
-    #                                accept = c(".jpg", ".png"))
-    #     )
-    # })
 
     sqlOutputFocusCameras = reactive({
         sqlInputFocusCameras = paste("select distinct camera_id_llnnnn from ", 
