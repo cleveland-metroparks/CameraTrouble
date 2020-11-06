@@ -62,6 +62,8 @@ fieldsMandatory = c("names",
                     "image_count", 
                     "covid_related_impact",
                     "battery_status")
+# mandatory for file upload
+fieldsMandatory2 = c("project")
 
 labelMandatory = function(label) {
     tagList(
@@ -111,7 +113,7 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
                                            input.focus_camera_choices == "")',
                                            textInput("other_camera_note",
                                                          labelMandatory("If your camera was not 
-                                                         in the list,enter it here (add any 
+                                                         in the list, enter it here (add any 
                                                         notes in action_items)."))),
                           textAreaInput("action_items",
                                         "Action items needed (if any)"),
@@ -163,10 +165,38 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
                  tabPanel("Camera card upload",
                           id = "uploader",
                           h4("Here you can upload a compressed file containing images from one camera card."),
-                          fileInput("file_upload", "Upload the 7zip file with images in it",
-                                    accept = c(".jpg", ".png")),
-                          tableOutput("files")
-                          
+                          "Enter the following information to identify the upload and then an upload button will appear.",
+                          uiOutput("ui_project2"),
+                          conditionalPanel(condition = "input.project2 == 'focus'",
+                                           uiOutput("ui_focus_camera_choices2")),
+                          conditionalPanel(condition = "input.project2 == 'other'",
+                                           uiOutput("ui_other_camera_choices2")),
+                          conditionalPanel(condition = 'input.project2 != ""',
+                                           tags$span(style="color:red",
+                                                     textOutput("camera_entered2")), br()),
+                          conditionalPanel(condition = 'input.project2 != "" &&
+                                           (input.focus_camera_choices2 == "" ||
+                                           input.focus_camera_choices2 == "")',
+                                           uiOutput("ui_other_camera_note2")),
+                          "Mandatory information marked with red star",
+                          labelMandatory(" "),
+                          " must be entered before you can submit.", br(), br(),
+                          uiOutput("ui_upload_file"),
+                          h5("Once file upload is complete a verification will appear here (may take a while):"),
+                          tableOutput("files"),
+                          shinyjs::hidden(span(id = "submit_msg2", "Submitting..."),
+                                          div(id = "error2",
+                                              div(
+                                                  br(),
+                                                  tags$b("Error: "),
+                                                  span(id = "error_msg"),
+                                                  br(), br()
+                                              ))),
+                          shinyjs::hidden(div(
+                              id = "thankyou_msg2",
+                              h3("Thanks, your file was uploaded successfully! You may be contacted for further information."),
+                              actionLink("submit_another2", "Submit another response")
+                              ))
                  )
 )
 
@@ -182,6 +212,19 @@ server <- function(input, output) {
                                                space provided below.")
         } else {
             output$camera_entered = renderText("")
+        }
+    })
+    
+    observe({
+        if((is.null(input$focus_camera_choices2) || input$focus_camera_choices2 == "") &&
+           (is.null(input$other_camera_choices2) || input$other_camera_choices2 == "") &&
+           (is.null(input$other_camera_note2) || input$other_camera_note2 == "")
+        ) {
+            output$camera_entered2 = renderText("No camera name entered. Choose one
+                                               from dropdown above or enter in
+                                               space provided below.")
+        } else {
+            output$camera_entered2 = renderText("")
         }
     })
     
@@ -204,7 +247,35 @@ server <- function(input, output) {
         shinyjs::toggleState(id = "submit", 
                              condition = mandatoryFilled && camera_id_filled)
     })
-    
+
+    output$ui_upload_file = renderUI({
+        if((!is.null(input$focus_camera_choices2) &&
+            input$focus_camera_choices2 != "") ||
+           (!is.null(input$other_camera_choices2) &&
+            input$other_camera_choices2 != "") ||
+           (!is.null(input$other_camera_note2) &&
+            input$other_camera_note2 != "")){
+            fileInput("file_upload",
+                      "Upload the 7zip file with images in it",
+                      accept = c(".jpg", ".png"))
+        } else {
+                "Upload button will appear here once project and camera are defined"
+        }
+    })
+    # output$ui_upload_file = renderUI({
+    #     conditionalPanel(condition = 
+    #                          (!is.null(input$focus_camera_choices2) &&
+    #                               input$focus_camera_choices2 != "") ||
+    #                          (!is.null(input$other_camera_choices2) &&
+    #                               input$other_camera_choices2 != "") ||
+    #                          (!is.null(input$other_camera_note2) &&
+    #                               input$other_camera_note2 != ""),
+    #                      fileInput("file_upload",
+    #                                "Upload the 7zip file with images in it",
+    #                                accept = c(".jpg", ".png"))
+    #     )
+    # })
+
     sqlOutputFocusCameras = reactive({
         sqlInputFocusCameras = paste("select distinct camera_id_llnnnn from ", 
                                      Schema, ".", db_table_focus, 
@@ -237,6 +308,44 @@ server <- function(input, output) {
                     selected = NULL, multiple = FALSE, width="450px")
     })
 
+# Set up to use previous entry as entry here
+    output$ui_project2 = renderUI({
+        selectInput("project2", labelMandatory("Camera project"),
+                choices = c("Choose one option" = "",
+                            "Focus on Wildlife wildlife camera project" =
+                                "focus",
+                            "Other wildlife camera projects \n(e.g., West Creek trails, S. Chagrin climate, Timberlane plots)" =
+                                "other"),
+                selected = input$project)
+    })
+    
+    output$ui_focus_camera_choices2 <- renderUI({
+        selectInput('focus_camera_choices2',
+                    label =labelMandatory('Focus on Wildlife camera name'),
+                    choices=append(sqlOutputFocusCameras(),
+                                   c("Choose one camera" = ""),
+                                   after = 0),
+                    selected = input$focus_camera_choices,
+                    multiple = FALSE, width="450px")
+    })
+
+    output$ui_other_camera_choices2 <- renderUI({
+        selectInput('other_camera_choices2',
+                    label =labelMandatory('Other project camera names'),
+                    choices=append(sqlOutputOtherCameras(),
+                                   c("Choose one camera" = ""),
+                                   after = 0),
+                    selected = input$other_camera_choices,
+                    multiple = FALSE, width="450px")
+    })
+        
+    output$ui_other_camera_note2 = renderUI({
+        textInput("other_camera_note2",
+                  labelMandatory("If your camera was not in the list, 
+                  enter it here (add any notes in action_items)."),
+                  value = input$other_camera_note)
+    })
+    
     output$up_date = renderUI({
         if(input$batteries_changed == 'Yes') {
             dateInput("battery_change_date",
@@ -318,7 +427,6 @@ server <- function(input, output) {
     file_uploaded = reactive({
         req(input$file_upload)
     })
-    # output$files <- renderTable(input$file_upload)
     output$files <- renderTable(file_uploaded())
     
 }
