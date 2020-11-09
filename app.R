@@ -30,6 +30,7 @@ db_table_other = "other_project_cameras"
 db_table_out = "rshiny_test_form_3"
 # un-comment this and sections for saving to file locally for /testing/debugging
 # responsesDir <- file.path("responses")
+file_uploadsDir = file.path("file_uploads")
 
 # These need to be changed whenever fields are added/subtracted from ui
 fieldsSimple = c("names", "email", "clock_updated", "project", "focus_camera_choices",
@@ -182,8 +183,11 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
                           labelMandatory(" "),
                           " must be entered before you can submit.", br(), br(),
                           uiOutput("ui_upload_file"),
-                          h5("Once file upload is complete a verification will appear here (may take a while):"),
+                          h5("Once file upload is complete a verification with file, size (Kilobytes), and type will appear here (may take a while):"),
                           tableOutput("files"),
+                          h5("Once your file is copied into storage on the server, a message will appear here:"),
+                          # textOutput("file_copied"), br(),
+                          tableOutput("file_unused"),
                           shinyjs::hidden(span(id = "submit_msg2", "Submitting..."),
                                           div(id = "error2",
                                               div(
@@ -295,7 +299,7 @@ server <- function(input, output) {
                     selected = NULL, multiple = FALSE, width="450px")
     })
 
-# Set up to use previous entry as entry here
+# Set up to use previous entry as default entry here
     output$ui_project2 = renderUI({
         selectInput("project2", labelMandatory("Camera project"),
                 choices = c("Choose one option" = "",
@@ -350,13 +354,13 @@ server <- function(input, output) {
             "%s_%s_%s", # If not saving file locally
             # "%s_%s_%s.csv", # or "%s_%s_%s_%s.csv" if saving locally
             input$project,
-            coalesce(na_if(input$focus_camera_choices, ""),
-                     na_if(input$other_camera_choices, ""),
-                     na_if(input$other_camera_note, "")),
+            paste0(input$focus_camera_choices,
+                   input$other_camera_choices,
+                   input$other_camera_note),
             humanTime(entry_dt)
             # use line below if you worry about same camera name/same second 
             #  collisions or want a nice unique key. Also change format of sprintf above
-            # digest::digest(data)
+            # digest::digest(formData())
         )
     })
  
@@ -410,12 +414,53 @@ server <- function(input, output) {
         shinyjs::hide("thankyou_msg")
     })
     
-    
-    file_uploaded = reactive({
-        req(input$file_upload)
+# File upload tab
+    fileID = reactive({
+        sprintf(
+            "%s_%s_%s.jpg", # or "%s_%s_%s_%s.jpg" if saving locally
+            input$project2,
+            paste0(
+                input$focus_camera_choices2,
+                input$other_camera_choices2,
+                input$other_camera_note2),
+            humanTime(entry_dt)
+            # use line below if you worry about same camera name/same second
+            #  collisions or want a nice unique key. Also change format of sprintf above
+            # digest::digest(input$file_upload) # not sure about this using input for a hash
+        )
     })
-    output$files <- renderTable(file_uploaded())
+
+
+    file_uploaded = reactive({
+        req({input$file_upload})
+    })
+
+    file_copied = reactive({
+        upload_value = file_uploaded()
+        luv = length(upload_value)
+        # cat("File ", upload_value[1,1], " copied as ", fileID(), "\n") # Debug code
+        req(upload_value,
+            file.copy(upload_value$datapath,
+                      file.path(file_uploadsDir,
+                                fileID()))
+            )
+        if(luv > 1)
+            upload_value$file_copied_to = fileID()
+        upload_value[,-4] # Item 4 is tmp dir path
+    })
     
+    output$files <- renderTable({
+        fu = file_uploaded()
+        fu$size = fu$size/1000
+        fu[,-4]
+    })
+    
+    output$file_unused = renderTable({
+        fu = file_copied()
+        fu$size = fu$size/1000
+        fu#[,-4]
+    })
+    # output$file_copied = renderText("Test text")
 }
 
 # Run the application 
