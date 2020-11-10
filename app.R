@@ -392,6 +392,12 @@ server <- function(session, input, output) {
     })
     
 # File upload tab
+    observeEvent(input$project2, {
+        ufp = file.path(file_uploadsDir, input$project2)
+        if(!dir.exists(ufp))
+            dir_created = dir.create(ufp, showWarnings = F)
+    })
+
     fileID = reactive({
         sprintf(
             "%s_%s_%s.jpg", # or "%s_%s_%s_%s.jpg" if saving locally
@@ -417,6 +423,10 @@ server <- function(session, input, output) {
         req(upload_value,
             file.copy(upload_value$datapath,
                       file.path(file_uploadsDir,
+                                ifelse(dir.exists(
+                                    file.path(file_uploadsDir, input$project2)),
+                                    input$project2,
+                                    ""),
                                 fileID()))
             )
         if(luv > 1)
