@@ -28,6 +28,7 @@ library(DBI)
 db_table_focus = "camera_trap_pcap"
 db_table_other = "other_project_cameras"
 db_table_out = "rshiny_test_form_3"
+db_uploads_table_out = "rshiny_test_form_4"
 # un-comment this and sections for saving to file locally for /testing/debugging
 # responsesDir <- file.path("responses")
 file_uploadsDir = file.path("file_uploads")
@@ -277,6 +278,19 @@ server <- function(session, input, output) {
         dbGetQuery(con, sqlInputCameras)
     })
     
+    sqlOutputCameras2 = reactive({
+        if(input$project2 == "focus"){
+            sqlInputCameras = paste("select distinct camera_id_llnnnn from ",
+                                    Schema, ".", db_table_focus,
+                                    " order by camera_id_llnnnn;", sep="")
+        } else {
+            sqlInputCameras<- paste("select distinct camera_id from ",
+                                    Schema, ".", db_table_other,
+                                    " order by camera_id;", sep="")
+        }
+        dbGetQuery(con, sqlInputCameras)
+    })
+    
     output$ui_camera_choices <- renderUI({
         selectInput('camera_choices',
                     label =labelMandatory('Wildlife camera name'),
@@ -302,7 +316,7 @@ server <- function(session, input, output) {
     output$ui_camera_choices2 <- renderUI({
         selectInput('camera_choices2',
                     label =labelMandatory('Wildlife camera name'),
-                    choices=append(sqlOutputCameras(),
+                    choices=append(sqlOutputCameras2(),
                                    c("Choose one camera" = ""),
                                    after = 0),
                     selected = input$camera_choices,
@@ -435,13 +449,26 @@ server <- function(session, input, output) {
     })
     
 # action to take when upload and copy are completed
-    upload_success = FALSE
+    table_id2 = Id(schema = Schema, 
+                  table = db_uploads_table_out)
+    
+    saveData2 <- function(data) {
+        # Keeping this for debugging. Also change format of recordID above
+        # write.csv(x = data, file = file.path(responsesDir, 
+        #                                      paste0(strsplit(fileID(), "\\.")[[1]][1],
+        #                                             ".csv")),
+        #           row.names = FALSE, quote = TRUE)
+        dbAppendTable(con, table_id2, value = data.frame(data))
+    }
+
+        # upload_success = FALSE # Debug code
     observeEvent(file_uploaded(), {
         shinyjs::disable("ui_upload_file")
         shinyjs::show("submit_msg2")
         shinyjs::hide("error2")
         tryCatch({
-            file_copied()
+            fc = file_copied()
+            saveData2(fc)
             shinyjs::reset("form2")
             shinyjs::hide("form2")
             shinyjs::show("thankyou_msg2")
