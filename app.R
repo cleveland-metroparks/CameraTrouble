@@ -33,9 +33,9 @@ db_table_out = "rshiny_test_form_3"
 file_uploadsDir = file.path("file_uploads")
 
 # These need to be changed whenever fields are added/subtracted from ui
-fieldsSimple = c("names", "email", "clock_updated", "project", "focus_camera_choices",
-                 "other_camera_choices", "other_camera_note", "action_items",
-                 "image_count", "covid_human_impacts", "comments", "battery_status", 
+fieldsSimple = c("names", "email", "clock_updated", "project", "camera_choices",
+                 "other_camera_note", "action_items", "image_count", 
+                 "covid_human_impacts", "comments", "battery_status", 
                  "batteries_changed")
 
 source("loginparams_shiny.R")
@@ -55,16 +55,18 @@ onStop(function() {
 })
 
 # Set up marking for mandatory fields
-# Camera name is also mandatory, but can be in 3 fields, and has to be handled separately
+# Camera name may be other and require note which has to be handled separately
 #  in the mandatoryFilled function in server
 fieldsMandatory = c("names", 
                     "date", 
                     "project", 
+                    "camera_choices",
                     "image_count", 
                     "covid_related_impact",
                     "battery_status")
 # mandatory for file upload
-fieldsMandatory2 = c("project")
+fieldsMandatory2 = c("project",
+                     "camera_choices")
 
 labelMandatory = function(label) {
     tagList(
@@ -91,7 +93,7 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
                           textInput("names", labelMandatory("Names"),
                                    placeholder = "Names of camera card volunteers"),
                           textInput("email", "Email",
-                                    placeholder = "at least one of team for follow up"),
+                                    placeholder = "At least one email of team for follow up"),
                           dateInput("date", labelMandatory("Date")),
                           selectInput("clock_updated", "Clock moved back/forward 1 hour?",
                                       choices = c("Choose one option" = "",
@@ -102,18 +104,15 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
                                                       "focus", 
                                                   "Other wildlife camera projects \n(e.g., West Creek trails, S. Chagrin climate, Timberlane plots)" = 
                                                       "other")),
-                          conditionalPanel(condition = "input.project == 'focus'",
-                                           uiOutput("ui_focus_camera_choices")),
-                          conditionalPanel(condition = "input.project == 'other'",
-                                           uiOutput("ui_other_camera_choices")),
+                          conditionalPanel(condition = 'input.project != ""',
+                                           uiOutput("ui_camera_choices")),
                           conditionalPanel(condition = 'input.project != ""',
                                            tags$span(style="color:red", 
                                                      textOutput("camera_entered")), br()),
                           conditionalPanel(condition = 'input.project != "" &&
-                                           input.focus_camera_choices == "" &&
-                                           input.other_camera_choices == ""',
+                                           input.camera_choices == "other"',
                                            textInput("other_camera_note",
-                                                         labelMandatory("If your camera was not 
+                                                     labelMandatory("If your camera was not 
                                                          in the list, enter it here (add any 
                                                         notes in action_items)."))),
                           textAreaInput("action_items",
@@ -121,7 +120,8 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
                           numericInput("image_count", labelMandatory("Number of pictures on SD Card (click box and type number)"),
                                        value = NULL,
                                        min = 0),
-                          labelMandatory(tags$strong("COVID-related impact?: ")),"Did you observe any NEW significant human activity at or near this 
+                          labelMandatory(tags$strong("COVID-related impact?: ")),"Did you 
+                          observe any NEW significant human activity at or near this 
                           camera that may be related to extra park use during the COVID-19 
                           period? (e.g., much higher human activity, vandalism, decorations 
                           or constructions, high amounts of trash)", br(),
@@ -168,16 +168,13 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
                           h4("Here you can upload a compressed file containing images from one camera card."),
                           "Enter the following information to identify the upload and then an upload button will appear.",
                           uiOutput("ui_project2"),
-                          conditionalPanel(condition = "input.project2 == 'focus'",
-                                           uiOutput("ui_focus_camera_choices2")),
-                          conditionalPanel(condition = "input.project2 == 'other'",
-                                           uiOutput("ui_other_camera_choices2")),
+                          conditionalPanel(condition = 'input.project2 != ""',
+                                           uiOutput("ui_camera_choices2")),
                           conditionalPanel(condition = 'input.project2 != ""',
                                            tags$span(style="color:red",
                                                      textOutput("camera_entered2")), br()),
                           conditionalPanel(condition = 'input.project2 != "" &&
-                                           input.focus_camera_choices2 == "" &&
-                                           input.other_camera_choices2 == ""',
+                                           input.camera_choices2 == ""',
                                            uiOutput("ui_other_camera_note2")),
                           "Mandatory information marked with red star",
                           labelMandatory(" "),
@@ -206,9 +203,9 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
 
 server <- function(input, output) {
 
+# Warning if no project was entered yet
     observe({
-        if((is.null(input$focus_camera_choices) || input$focus_camera_choices == "") &&
-           (is.null(input$other_camera_choices) || input$other_camera_choices == "") &&
+        if((is.null(input$camera_choices) || input$camera_choices == "") &&
            (is.null(input$other_camera_note) || input$other_camera_note == "")
            ) {
             output$camera_entered = renderText("No camera name entered. Choose one 
@@ -220,8 +217,7 @@ server <- function(input, output) {
     })
     
     observe({
-        if((is.null(input$focus_camera_choices2) || input$focus_camera_choices2 == "") &&
-           (is.null(input$other_camera_choices2) || input$other_camera_choices2 == "") &&
+        if((is.null(input$camera_choices2) || input$camera_choices2 == "") &&
            (is.null(input$other_camera_note2) || input$other_camera_note2 == "")
         ) {
             output$camera_entered2 = renderText("No camera name entered. Choose one
@@ -241,64 +237,51 @@ server <- function(input, output) {
                    },
                    logical(1))
         mandatoryFilled <- all(mandatoryFilled)
-        camera_id_filled = (!is.null(input$focus_camera_choices) &&
-                                         input$focus_camera_choices != "") ||
-                           (!is.null(input$other_camera_choices) &&
-                                         input$other_camera_choices != "") ||
-                           (!is.null(input$other_camera_note) &&
-                                         input$other_camera_note != "")
+        camera_id_filled = (input$camera_choices == "other" &&
+            (!is.null(input$other_camera_note) &&
+                 input$other_camera_note != ""))
         
         shinyjs::toggleState(id = "submit", 
                              condition = mandatoryFilled && camera_id_filled)
     })
 
     output$ui_upload_file = renderUI({
-        if((!is.null(input$focus_camera_choices2) &&
-            input$focus_camera_choices2 != "") ||
-           (!is.null(input$other_camera_choices2) &&
-            input$other_camera_choices2 != "") ||
+        if((!is.null(input$camera_choices2) &&
+            input$camera_choices2 != "") ||
            (!is.null(input$other_camera_note2) &&
             input$other_camera_note2 != "")){
             fileInput("file_upload",
                       "Upload the 7zip file with images in it",
                       accept = c(".jpg", ".png"))
         } else {
-                "Upload button will appear here once project and camera are defined"
+                "Upload button will appear here once project and camera are defined."
         }
     })
 
-    sqlOutputFocusCameras = reactive({
-        sqlInputFocusCameras = paste("select distinct camera_id_llnnnn from ", 
-                                     Schema, ".", db_table_focus, 
-                                     " order by camera_id_llnnnn;", sep="")
-        dbGetQuery(con, sqlInputFocusCameras)
+    sqlOutputCameras = reactive({
+        if(input$project == "focus"){
+            sqlInputCameras = paste("select distinct camera_id_llnnnn from ",
+                                    Schema, ".", db_table_focus,
+                                    " order by camera_id_llnnnn;", sep="")
+        } else {
+            sqlInputCameras<- paste("select distinct camera_id from ",
+                                    Schema, ".", db_table_other,
+                                    " order by camera_id;", sep="")
+        }
+        dbGetQuery(con, sqlInputCameras)
     })
     
-    sqlOutputOtherCameras <- reactive({
-        sqlInputOtherCameras<- paste("select distinct camera_id from ", 
-                                     Schema, ".", db_table_other, 
-                                     " order by camera_id;", sep="")
-        dbGetQuery(con, sqlInputOtherCameras)
-    })
-    
-    output$ui_focus_camera_choices <- renderUI({
-        selectInput('focus_camera_choices',
-                    label =labelMandatory('Focus on Wildlife camera name'),
-                    choices=append(sqlOutputFocusCameras(), 
-                                   c("Choose one camera" = ""), 
-                                   after = 0),
+    output$ui_camera_choices <- renderUI({
+        selectInput('camera_choices',
+                    label =labelMandatory('Wildlife camera name'),
+                    choices=append(
+                        append(
+                            sqlOutputCameras(),
+                            c("Choose one camera" = ""), after = 0),
+                        c("Other" = "other")),
                     selected = NULL, multiple = FALSE, width="450px")
     })
     
-    output$ui_other_camera_choices <- renderUI({
-        selectInput('other_camera_choices',
-                    label =labelMandatory('Other project camera names'),
-                    choices=append(sqlOutputOtherCameras(),
-                                   c("Choose one camera" = ""),
-                                   after = 0),
-                    selected = NULL, multiple = FALSE, width="450px")
-    })
-
 # Set up to use previous entry as default entry here
     output$ui_project2 = renderUI({
         selectInput("project2", labelMandatory("Camera project"),
@@ -310,26 +293,16 @@ server <- function(input, output) {
                 selected = input$project)
     })
     
-    output$ui_focus_camera_choices2 <- renderUI({
-        selectInput('focus_camera_choices2',
-                    label =labelMandatory('Focus on Wildlife camera name'),
-                    choices=append(sqlOutputFocusCameras(),
+    output$ui_camera_choices2 <- renderUI({
+        selectInput('camera_choices2',
+                    label =labelMandatory('Wildlife camera name'),
+                    choices=append(sqlOutputCameras(),
                                    c("Choose one camera" = ""),
                                    after = 0),
-                    selected = input$focus_camera_choices,
+                    selected = input$camera_choices,
                     multiple = FALSE, width="450px")
     })
 
-    output$ui_other_camera_choices2 <- renderUI({
-        selectInput('other_camera_choices2',
-                    label =labelMandatory('Other project camera names'),
-                    choices=append(sqlOutputOtherCameras(),
-                                   c("Choose one camera" = ""),
-                                   after = 0),
-                    selected = input$other_camera_choices,
-                    multiple = FALSE, width="450px")
-    })
-        
     output$ui_other_camera_note2 = renderUI({
         textInput("other_camera_note2",
                   labelMandatory("If your camera was not in the list, 
@@ -354,8 +327,7 @@ server <- function(input, output) {
             "%s_%s_%s", # If not saving file locally
             # "%s_%s_%s.csv", # or "%s_%s_%s_%s.csv" if saving locally
             input$project,
-            paste0(input$focus_camera_choices,
-                   input$other_camera_choices,
+            paste0(input$camera_choices,
                    input$other_camera_note),
             humanTime(entry_dt)
             # use line below if you worry about same camera name/same second 
@@ -420,8 +392,7 @@ server <- function(input, output) {
             "%s_%s_%s.jpg", # or "%s_%s_%s_%s.jpg" if saving locally
             input$project2,
             paste0(
-                input$focus_camera_choices2,
-                input$other_camera_choices2,
+                input$camera_choices2,
                 input$other_camera_note2),
             humanTime(entry_dt)
             # use line below if you worry about same camera name/same second
