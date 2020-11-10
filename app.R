@@ -327,8 +327,8 @@ server <- function(input, output) {
             "%s_%s_%s", # If not saving file locally
             # "%s_%s_%s.csv", # or "%s_%s_%s_%s.csv" if saving locally
             input$project,
-            paste0(input$camera_choices,
-                   input$other_camera_note),
+            paste(input$camera_choices,
+                   input$other_camera_note, sep = "_"),
             humanTime(entry_dt)
             # use line below if you worry about same camera name/same second 
             #  collisions or want a nice unique key. Also change format of sprintf above
@@ -391,9 +391,9 @@ server <- function(input, output) {
         sprintf(
             "%s_%s_%s.jpg", # or "%s_%s_%s_%s.jpg" if saving locally
             input$project2,
-            paste0(
+            paste(
                 input$camera_choices2,
-                input$other_camera_note2),
+                input$other_camera_note2, sep = "_"),
             humanTime(entry_dt)
             # use line below if you worry about same camera name/same second
             #  collisions or want a nice unique key. Also change format of sprintf above
