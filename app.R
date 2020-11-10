@@ -165,8 +165,11 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
                  ),
                  tabPanel("Camera card upload",
                           id = "uploader",
+                          shinyjs::useShinyjs(),
+                          shinyjs::inlineCSS(appCSS),
+                          div(id = "form2",
                           h4("Here you can upload a compressed file containing images from one camera card."),
-                          "Enter the following information to identify the upload and then an upload button will appear.",
+                              "Enter the following information to identify the upload and then an upload button will appear.",
                           uiOutput("ui_project2"),
                           conditionalPanel(condition = 'input.project2 != ""',
                                            uiOutput("ui_camera_choices2")),
@@ -178,30 +181,33 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
                                            uiOutput("ui_other_camera_note2")),
                           "Mandatory information marked with red star",
                           labelMandatory(" "),
-                          " must be entered before you can submit.", br(), br(),
+                          " must be entered before you can upload.", br(), br(),
                           uiOutput("ui_upload_file"),
-                          h5("Once file upload is complete a verification with file, size (Kilobytes), and type will appear here (may take a while):"),
-                          tableOutput("files"),
-                          h5("Once your file is copied into storage on the server, a message will appear here:"),
-                          # textOutput("file_copied"), br(),
-                          tableOutput("file_unused"),
                           shinyjs::hidden(span(id = "submit_msg2", "Submitting..."),
                                           div(id = "error2",
                                               div(
                                                   br(),
                                                   tags$b("Error: "),
-                                                  span(id = "error_msg"),
+                                                  span(id = "error_msg2"),
                                                   br(), br()
-                                              ))),
+                                              )))),
                           shinyjs::hidden(div(
                               id = "thankyou_msg2",
-                              h3("Thanks, your file was uploaded successfully! You may be contacted for further information."),
-                              actionLink("submit_another2", "Submit another response")
-                              ))
+                              h3(
+                                  "Thanks, your upload was successful! You may be contacted for further information."
+                              ),
+                              actionLink("submit_another2", "Submit another upload")
+                          )),
+# Debug code to check on upload and copy
+                          # h5("Once file upload is complete a verification with file, size (Kilobytes), and type will appear here (may take a while):"),
+                          # tableOutput("files"),
+                          # h5("Once your file is copied into storage on the server, a message will appear here:"),
+                          # # textOutput("file_copied"), br(),
+                          # tableOutput("file_uploaded_name"),
                  )
 )
 
-server <- function(input, output) {
+server <- function(session, input, output) {
 
 # Warning if no project was entered yet
     observe({
@@ -362,7 +368,6 @@ server <- function(input, output) {
         shinyjs::disable("submit")
         shinyjs::show("submit_msg")
         shinyjs::hide("error")
-        
         tryCatch({
             saveData(formData())
             shinyjs::reset("form")
@@ -401,7 +406,6 @@ server <- function(input, output) {
         )
     })
 
-
     file_uploaded = reactive({
         req({input$file_upload})
     })
@@ -420,18 +424,49 @@ server <- function(input, output) {
         upload_value[,-4] # Item 4 is tmp dir path
     })
     
-    output$files <- renderTable({
-        fu = file_uploaded()
-        fu$size = fu$size/1000
-        fu[,-4]
+# action to take when upload and copy are completed
+    upload_success = FALSE
+    observeEvent(file_uploaded(), {
+        shinyjs::disable("ui_upload_file")
+        shinyjs::show("submit_msg2")
+        shinyjs::hide("error2")
+        tryCatch({
+            file_copied()
+            shinyjs::reset("form2")
+            shinyjs::hide("form2")
+            shinyjs::show("thankyou_msg2")
+        },
+            error = function(err) {
+                shinyjs::html("error_msg2", err$message)
+                shinyjs::show(id = "error2", 
+                              anim = TRUE, 
+                              animType = "fade")
+            },
+            finally = {
+                shinyjs::enable("ui_upload_file")
+                shinyjs::hide("submit_msg2")
+        })
     })
     
-    output$file_unused = renderTable({
-        fu = file_copied()
-        fu$size = fu$size/1000
-        fu#[,-4]
+    observeEvent(input$submit_another2, {
+        shinyjs::show("form2")
+        shinyjs::hide("thankyou_msg2")
     })
-    # output$file_copied = renderText("Test text")
+    
+# Debug code to check on upload and copy
+    # output$files <- renderTable({
+    #     fu = file_uploaded()
+    #     fu$size = fu$size/1000
+    #     fu[,-4]
+    # })
+    # 
+    # output$file_uploaded_name = renderText({
+    #     fc = file_copied()
+    #     upload_success <<- TRUE
+    #     paste("File was named", fc$file_copied_to, 
+    #           "and was successfully copied to the image storage space.")
+    # })
+    
 }
 
 # Run the application 
