@@ -110,8 +110,8 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
                                            tags$span(style="color:red", 
                                                      textOutput("camera_entered")), br()),
                           conditionalPanel(condition = 'input.project != "" &&
-                                           (input.focus_camera_choices == "" ||
-                                           input.focus_camera_choices == "")',
+                                           input.focus_camera_choices == "" &&
+                                           input.other_camera_choices == ""',
                                            textInput("other_camera_note",
                                                          labelMandatory("If your camera was not 
                                                          in the list, enter it here (add any 
@@ -176,8 +176,8 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
                                            tags$span(style="color:red",
                                                      textOutput("camera_entered2")), br()),
                           conditionalPanel(condition = 'input.project2 != "" &&
-                                           (input.focus_camera_choices2 == "" ||
-                                           input.focus_camera_choices2 == "")',
+                                           input.focus_camera_choices2 == "" &&
+                                           input.other_camera_choices2 == ""',
                                            uiOutput("ui_other_camera_note2")),
                           "Mandatory information marked with red star",
                           labelMandatory(" "),
