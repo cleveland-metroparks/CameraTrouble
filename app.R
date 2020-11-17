@@ -21,6 +21,7 @@
 library(shiny)
 library(shinyTime)
 library(shinyjs)
+library(shinymanager)
 library(dplyr)
 library(dbplyr)
 library(DBI)
@@ -40,6 +41,7 @@ fieldsSimple = c("names", "email", "clock_updated", "project", "camera_choices",
                  "batteries_changed")
 
 source("loginparams_shiny.R")
+source("cred_pass.R")
 
 con = dbConnect(
     drv = RPostgres::Postgres(),
@@ -52,7 +54,7 @@ con = dbConnect(
 )
 onStop(function() {
     dbDisconnect(con)
-    rm(User, Password, pos = ".GlobalEnv")
+    rm(User, Password, passphrase, pos = ".GlobalEnv")
 })
 
 # Set up marking for mandatory fields
@@ -61,13 +63,9 @@ onStop(function() {
 fieldsMandatory = c("names", 
                     "date", 
                     "project", 
-                    # "camera_choices",
                     "image_count", 
                     "covid_related_impact",
                     "battery_status")
-# mandatory for file upload
-fieldsMandatory2 = c("project",
-                     "camera_choices")
 
 labelMandatory = function(label) {
     tagList(
@@ -80,7 +78,7 @@ appCSS <-
      #error { color: red; }"
 
 # Define UI for application that draws a histogram
-ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
+ui <- secure_app(navbarPage("Cleveland Metroparks Wildlife Cameras",
                  id = "nav",
                  tabPanel("Camera check data",
                           shinyjs::useShinyjs(),
@@ -206,10 +204,18 @@ ui <- navbarPage("Cleveland Metroparks Wildlife Cameras",
                           # # textOutput("file_copied"), br(),
                           # tableOutput("file_uploaded_name"),
                  )
-)
+), enable_admin = TRUE)
 
 server <- function(session, input, output) {
-
+    # check_credentials directly on sqlite db
+    res_auth <- secure_server(
+        check_credentials = check_credentials(
+            db = "database.sqlite",
+            # passphrase = Sys.getenv("R_shinymanager_key")
+            passphrase = passphrase
+        )
+    )
+    
 # Warning if no project was entered yet
     observe({
         if((is.null(input$camera_choices) || input$camera_choices == "") &&
@@ -281,7 +287,7 @@ server <- function(session, input, output) {
     })
     
     sqlOutputCameras2 = reactive({
-        if(input$project2 == "focus"){
+        if(isTruthy(input$project2) && input$project2 == "focus"){
             sqlInputCameras = paste("select distinct camera_id_llnnnn from ",
                                     Schema, ".", db_table_focus,
                                     " order by camera_id_llnnnn;", sep="")
@@ -318,9 +324,10 @@ server <- function(session, input, output) {
     output$ui_camera_choices2 <- renderUI({
         selectInput('camera_choices2',
                     label =labelMandatory('Wildlife camera name'),
-                    choices=append(sqlOutputCameras2(),
-                                   c("Choose one camera" = ""),
-                                   after = 0),
+                    choices=append(
+                        append(sqlOutputCameras2(),
+                                   c("Choose one camera" = ""), after = 0),
+                        c("Other" = "other")),
                     selected = input$camera_choices,
                     multiple = FALSE, width="450px")
     })
