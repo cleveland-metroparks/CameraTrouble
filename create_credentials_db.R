@@ -24,4 +24,4 @@ create_db(
   passphrase = "tgwdnpo400C!"
 )
 
-rm(cameratester_pw, cameraadmin_pw)
+rm(passphrase, cameratester_pw, cameraadmin_pw)
