@@ -14,14 +14,14 @@ credentials <- data.frame(
 library(shiny)
 library(shinymanager)
 # Currently not setting this in ~/Documents/.Renviron 
-# Sys.setenv(R_shinymanager_key="tgwdnpo400C!")
+# Sys.setenv(R_shinymanager_key="passphrase here")
 
 # Init the database
 create_db(
   credentials_data = credentials,
   sqlite_path = "database.sqlite", # will be created
   # passphrase = Sys.getenv("R_shinymanager_key")
-  passphrase = "tgwdnpo400C!"
+  passphrase = passphrase
 )
 
-rm(passphrase, cameratester_pw, cameraadmin_pw)
+rm(passphrase, cameratester_pw, cameraadmin_pw, credentials)
