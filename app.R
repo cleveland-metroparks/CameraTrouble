@@ -40,6 +40,7 @@ fieldsSimple = c("names", "email", "clock_updated", "project", "camera_choices",
                  "batteries_changed")
 
 source("loginparams_shiny.R")
+source("cred_pass.R")
 
 con = dbConnect(
     drv = RPostgres::Postgres(),
@@ -52,7 +53,7 @@ con = dbConnect(
 )
 onStop(function() {
     dbDisconnect(con)
-    rm(User, Password, pos = ".GlobalEnv")
+    rm(User, Password, passphrase, pos = ".GlobalEnv")
 })
 
 # Set up marking for mandatory fields
