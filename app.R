@@ -61,7 +61,7 @@ onStop(function() {
 fieldsMandatory = c("names", 
                     "date", 
                     "project", 
-                    "camera_choices",
+                    # "camera_choices",
                     "image_count", 
                     "covid_related_impact",
                     "battery_status")
@@ -244,7 +244,9 @@ server <- function(session, input, output) {
                    },
                    logical(1))
         mandatoryFilled <- all(mandatoryFilled)
-        camera_id_filled = (input$camera_choices == "other" &&
+        camera_id_filled = (!is.null(input$camera_choices) &&
+                                input$camera_choices != "") ||
+        (input$camera_choices == "other" &&
             (!is.null(input$other_camera_note) &&
                  input$other_camera_note != ""))
         
