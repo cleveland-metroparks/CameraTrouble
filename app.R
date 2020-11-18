@@ -34,6 +34,11 @@ db_uploads_table_out = "rshiny_test_form_4"
 # responsesDir <- file.path("responses")
 file_uploadsDir = file.path("file_uploads")
 
+# For larger uploads of 7zip files, we will need to do something like:
+max_mb = 77000 # This would give 7.7Gb limit
+# options(shiny.maxRequestSize = max_mb*1024^2/1000)
+
+
 # These need to be changed whenever fields are added/subtracted from ui
 fieldsSimple = c("names", "email", "clock_updated", "project", "camera_choices",
                  "other_camera_note", "action_items", "image_count", 
