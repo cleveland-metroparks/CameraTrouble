@@ -11,6 +11,9 @@
 # and
 #  - https://github.com/cleveland-metroparks/nr_coyote_form
 #
+# Some basis for storing secrets are based on using Environ variables as in this discussion
+#  - https://cran.r-project.org/web/packages/httr/vignettes/secrets.html
+#
 # To get other camera names I exported  to .csv, imported into r, and used
 # other_names = unique(Wildlife.camera.check.data.11.01.2020$Other.project.camera.names)
 # other_camera_names = data.frame(camera_id = other_names[order(other_names)])[-c(1, 5),]
@@ -36,6 +39,7 @@ file_uploadsDir = file.path("file_uploads")
 
 # For larger uploads of 7zip files, we will need to do something like:
 max_mb = 77000 # This would give 7.7Gb limit
+# Based on max upload of 11,000 images at 700Kb
 # options(shiny.maxRequestSize = max_mb*1024^2/1000)
 
 
