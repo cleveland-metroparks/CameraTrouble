@@ -45,7 +45,7 @@ max_mb = 77000 # This would give 7.7Gb limit
 
 # These need to be changed whenever fields are added/subtracted from ui
 fieldsSimple = c("names", "email", "clock_updated", "project", "camera_choices",
-                 "other_camera_note", "action_items", "image_count", 
+                 "other_camera_note", "image_count", 
                  "covid_human_impacts", "comments", "battery_status", 
                  "batteries_changed")
 
@@ -74,7 +74,8 @@ fieldsMandatory = c("names",
                     "project", 
                     "image_count", 
                     "covid_related_impact",
-                    "battery_status")
+                    "battery_status",
+                    "batteries_changed")
 
 labelMandatory = function(label) {
     tagList(
@@ -122,9 +123,7 @@ ui <- secure_app(navbarPage("Cleveland Metroparks Wildlife Cameras",
                                            textInput("other_camera_note",
                                                      labelMandatory("If your camera was not 
                                                          in the list, enter it here (add any 
-                                                        notes in action_items)."))),
-                          textAreaInput("action_items",
-                                        "Action items needed (if any)"),
+                                                        notes in Comments below)."))),
                           numericInput("image_count", labelMandatory("Number of pictures on SD Card (click box and type number)"),
                                        value = NULL,
                                        min = 0),
@@ -140,15 +139,14 @@ ui <- secure_app(navbarPage("Cleveland Metroparks Wildlife Cameras",
                           conditionalPanel(condition = "input.covid_related_impact == 'Yes'",
                                            textAreaInput("covid_human_impacts","COVID-related human impacts?")),
                           textAreaInput("comments", "Comments"),
-                          numericInput("battery_status", labelMandatory("Battery status  (from camera display; 0-3)"),
+                          numericInput("battery_status", labelMandatory("Battery status before any battery change (from camera display; 0-3)"),
                                       value = NULL, min = 0, max = 3),
-                          selectInput("batteries_changed","Batteries changed?",
+                          selectInput("batteries_changed",labelMandatory("Batteries changed?"),
                                       choices = c("Choose one option" = "",
                                                   "No",
                                                   "Yes")),
                           conditionalPanel(condition = "input.batteries_changed == 'Yes'",
                                            uiOutput('up_date')),
-# May want to include battery readings here
 
                         "Mandatory information marked with red star",
                         labelMandatory(" "),
@@ -187,6 +185,9 @@ ui <- secure_app(navbarPage("Cleveland Metroparks Wildlife Cameras",
                           conditionalPanel(condition = 'input.project2 != "" &&
                                            input.camera_choices2 == ""',
                                            uiOutput("ui_other_camera_note2")),
+                          numericInput("image_count2", labelMandatory("Number of pictures on SD Card (click box and type number)"),
+                                       value = NULL,
+                                       min = 0),
                           "Mandatory information marked with red star",
                           labelMandatory(" "),
                           " must be entered before you can upload.", br(), br(),
@@ -344,7 +345,7 @@ server <- function(session, input, output) {
     output$ui_other_camera_note2 = renderUI({
         textInput("other_camera_note2",
                   labelMandatory("If your camera was not in the list, 
-                  enter it here (add any notes in action_items)."),
+                  enter it here (add any notes in Comments below)."),
                   value = input$other_camera_note)
     })
     
@@ -461,8 +462,10 @@ server <- function(session, input, output) {
                                     ""),
                                 fileID()))
             )
-        if(luv > 1)
+        if(luv > 1){
             upload_value$file_copied_to = fileID()
+            upload_value$image_count = input$image_count2
+        }
         upload_value[,-4] # Item 4 is tmp dir path
     })
     
