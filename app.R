@@ -31,7 +31,7 @@ library(DBI)
 
 db_table_focus = "camera_trap_pcap"
 db_table_other = "other_project_cameras"
-db_table_out = "rshiny_test_form_3"
+db_table_out = "camera_check"
 db_uploads_table_out = "rshiny_test_form_4"
 # un-comment this and sections for saving to file locally for /testing/debugging
 # responsesDir <- file.path("responses")
@@ -46,8 +46,7 @@ max_mb = 77000 # This would give 7.7Gb limit
 # These need to be changed whenever fields are added/subtracted from ui
 fieldsSimple = c("names", "email", "clock_updated", "project", "camera_choices",
                  "other_camera_note", "image_count", 
-                 "covid_human_impacts", "comments", "battery_status", 
-                 "batteries_changed")
+                 "comments", "battery_status", "batteries_changed")
 
 source("loginparams_shiny.R")
 source("cred_pass.R")
@@ -73,7 +72,6 @@ fieldsMandatory = c("names",
                     "date", 
                     "project", 
                     "image_count", 
-                    "covid_related_impact",
                     "battery_status",
                     "batteries_changed")
 
@@ -127,17 +125,6 @@ ui <- secure_app(navbarPage("Cleveland Metroparks Wildlife Cameras",
                           numericInput("image_count", labelMandatory("Number of pictures on SD Card (click box and type number)"),
                                        value = NULL,
                                        min = 0),
-                          labelMandatory(tags$strong("COVID-related impact?: ")),"Did you 
-                          observe any NEW significant human activity at or near this 
-                          camera that may be related to extra park use during the COVID-19 
-                          period? (e.g., much higher human activity, vandalism, decorations 
-                          or constructions, high amounts of trash)", br(),
-                          selectInput("covid_related_impact", "",
-                                      choices = c("Choose one option" = "",
-                                                  "No",
-                                                  "Yes")),
-                          conditionalPanel(condition = "input.covid_related_impact == 'Yes'",
-                                           textAreaInput("covid_human_impacts","COVID-related human impacts?")),
                           textAreaInput("comments", "Comments"),
                           numericInput("battery_status", labelMandatory("Battery status before any battery change (from camera display; 0-3)"),
                                       value = NULL, min = 0, max = 3),
